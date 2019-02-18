@@ -1,10 +1,5 @@
 package com.smism.jc.tpkdemo;
-
 import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.database.Cursor;
-import android.util.Log;
-
 import com.esri.arcgisruntime.arcgisservices.LevelOfDetail;
 import com.esri.arcgisruntime.arcgisservices.TileInfo;
 import com.esri.arcgisruntime.data.TileKey;
@@ -12,13 +7,10 @@ import com.esri.arcgisruntime.geometry.Envelope;
 import com.esri.arcgisruntime.geometry.Point;
 import com.esri.arcgisruntime.geometry.SpatialReference;
 import com.esri.arcgisruntime.layers.ImageTiledLayer;
-
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class WWTilesLayer extends ImageTiledLayer {
@@ -88,41 +80,29 @@ public class WWTilesLayer extends ImageTiledLayer {
     @SuppressLint("DefaultLocale")
     @Override
     protected byte[] getTile(TileKey tileKey) {
-
-
-
         //一个bundle只能存储128*128个切片，有多个bundle，通过tilekey的行列值，判断属于哪个bundle
         byte[] result=null;
         String path;
         int R = 128 * (tileKey.getRow() / 128);//十进制
         int C = 128 * (tileKey.getColumn()/128);//十进制
-
         path = wwTilesPath + "L" + String.format("%02d", tileKey.getLevel()) + "/";
         path = path + "R" + String.format("%04x", R) + "C" + String.format("%04x", C);
-
-        Log.i("-----",path);
-
         try {
             FileInputStream fin = new FileInputStream(path + ".bundle");
             FileInputStream findex = new FileInputStream(path + ".bundlx");
             //bundlx只存储了对应bundle中图片的偏移量，所有要想知道在bundlx中的偏移量，首先要把前面所有的bundlx的长度给减掉
             //index为tileKey在bundlx偏移的单位数(每个单位为5个字节，没有计算在内)
             int index = 128 * (tileKey.getColumn() - C) + (tileKey.getRow() - R);
-            byte[] imageIndex = readByteFromFileStreams(findex, 16 + index * 5, 5);//找到索引
-
-
-
+            byte[] imageIndex=readByteFromFileStreams(findex,16+5*index,5);//找到索引
             //根据得到的索引值，转换成十进制，即为图片在bundle中的偏移量
             long offset = (long) (imageIndex[0] & 0xff) + (long) (imageIndex[1] & 0xff) * 256 + (long) (imageIndex[2] & 0xff) * 65536 + (long) (imageIndex[3] & 0xff) * 16777216+ (long) (imageIndex[4] & 0xff) * 4294967296L;//十进制
-            long startOffset = offset ;
+            byte[] imageLength=readByteFromFileStreams(fin,(int)offset,4);
             //先获得切片长度
-            byte[] imageLength = readByteFromFileStreams(fin, (int) startOffset, 4);
-            int length = (int) (imageLength[0] & 0xff) + (int) (imageLength[1] & 0xff) * 256 + (int) (imageLength[2] & 0xff) * 65536 + (int) (imageLength[3] & 0xff) * 16777216;
+            int length = (imageLength[0] & 0xff) +(imageLength[1] & 0xff) * 256 + (imageLength[2] & 0xff) * 65536 +  (imageLength[3] & 0xff) * 16777216;
             //读取切片
             result=new byte[length];
-            result = readByteFromFileStreams(fin, (int) offset, length);
+            fin.read(result);//为什么得到切片长度从头去读？？？？
             return result;
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -151,16 +131,8 @@ public class WWTilesLayer extends ImageTiledLayer {
         return tileInfo;
     }
     public static Envelope buildEnvelope() {
-//        fullExtent = new Envelope(121.643853696777, 31.1331561908896, 121.678479436772, 31.1714844852604,SpatialReference.create(102100));//全服范围  错误
-//        fullExtent = new Envelope(13541507.057099674, 3652074.2996890345, 13545011.162841443, 3653019.0753587633,SpatialReference.create(102100));//全服范围
         fullExtent = new Envelope(13541331.9174028, 3655039.84690429, 13545186.3142694, 3650054.12230305,SpatialReference.create(102100));//全服范围
-
-
-
-
-
         return fullExtent;
-
     }
 
 
