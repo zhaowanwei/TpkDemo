@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-
+//
 public class WWTilesLayer extends ImageTiledLayer {
     private static WWTilesLayer wwTilesLayer;
     private static TileInfo tileInfo;
